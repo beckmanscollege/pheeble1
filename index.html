@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pheeble</title>
+    <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: rgb(255, 255, 255);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .title {
+            font-family: 'Michroma', sans-serif;
+            font-size: 74px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #202124;
+            user-select: none;
+            letter-spacing: 1px;
+        }
+
+        .title span {
+            -webkit-text-stroke: 1px #000000;
+            text-shadow: 
+                0,5px 0,5px 0 #000,
+                -0,5px -0,5px 0 #000,
+                0,5px -0,5px 0 #000,
+                -0,5px 0,5px 0 #000;
+        }
+
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            transition: height 0.3s ease;
+        }
+
+        .search-container.results-shown {
+            height: auto;
+            padding: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            flex-direction: column;
+            width: 584px;
+            max-width: 90%;
+            margin: 20px auto;
+            position: relative;
+        }
+
+        .search-input-container {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ffbfe3;
+            border-radius: 0px;
+            padding: 8px 16px;
+            transition: all 0.3s ease;
+            background-color: white;
+        }
+
+        .search-input-container:hover, .search-input-container:focus-within {
+            box-shadow: 0 1px 6px #59cf75;
+            border-color: rgba(108, 108, 108, 0);
+        }
+
+        .search-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            padding: 8px;
+            width: 100%;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .search-button {
+            background-color: #ffbfe3;
+            border: 1px solid #101010;
+            border-radius: 0px;
+            color: #3c4043;
+            font-size: 14px;
+            margin: 11px 4px;
+            padding: 0 16px;
+            height: 36px;
+            cursor: pointer;
+            user-select: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .random-button {
+            background-color: #ffbfe3;
+            border: 1px solid #101010;
+            border-radius: 0px;
+            color: rgb(0, 0, 0);
+            font-size: 14px;
+            margin: 11px 4px;
+            padding: 0 16px;
+            height: 36px;
+            cursor: pointer;
+            user-select: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .random-button:hover {
+            box-shadow: 0 1px 1px rgba(0,0,0,.1);
+            background-color: #ffffff;
+            border: 1px solid #59cf75;
+            color: #202124;
+        }
+
+        .draw-button {
+            background-color: #ffbfe3;
+            border: 1px solid #101010;
+            border-radius: 0px;
+            color: rgb(0, 0, 0);
+            font-size: 14px;
+            margin: 11px 4px;
+            padding: 0 16px;
+            height: 36px;
+            cursor: pointer;
+            user-select: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .draw-button:hover {
+            box-shadow: 0 1px 1px rgba(0,0,0,.1);
+            background-color: #ffffff;
+            border: 1px solid #59cf75;
+            color: #202124;
+        }
+
+        .canvas-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 2000;
+        }
+
+        .drawing-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        .canvas-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 2001;
+        }
+
+        .canvas-button {
+            background-color: #ffbfe3;
+            border: 1px solid #101010;
+            border-radius: 0px;
+            color: rgb(0, 0, 0);
+            font-size: 14px;
+            padding: 0 16px;
+            height: 36px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .canvas-button:hover {
+            background-color: #ffffff;
+            border: 1px solid #59cf75;
+        }
+
+        .results-container {
+            display: none;
+            padding: 0px;
+            max-width: 90%;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 0;
+            padding: 10px;
+            width: 100%;
+            align-items: start;
+            background-color: white;
+        }
+
+        .result-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            border: 1px solid #59cf75;
+            border-radius: 0px;
+            transition: all 0.3s ease;
+            background-color: rgb(255, 255, 255);
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            transform-origin: center;
+            margin: 0;
+        }
+
+        .result-item:hover {
+            transform: scale(1.3);
+            box-shadow: 0 4px 9px #ffbfe3;
+            z-index: 1000;
+            background-color: white;
+        }
+
+        .image-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        img:not(.title-image) {
+            max-width: 100%;
+            width: auto;
+            height: auto;
+            max-height: 400px;
+            object-fit: contain;
+            margin: 0 0 10px 0;
+            filter: blur(10px);
+            transition: all 0.3s ease;
+            padding: 0;
+        }
+
+        img:not(.title-image):hover {
+            filter: blur(0px);
+        }
+
+        .result-text {
+            text-align: left;
+            font-size: 14px;
+            color: #3c4043;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            filter: blur(10px);
+            position: relative;
+            z-index: 1;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .result-text-row {
+            border-bottom: 1px solid #eee;
+            padding: 4px 0;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .result-text-row:last-child {
+            border-bottom: none;
+        }
+
+        .result-item:hover .result-text {
+            position: relative;
+            bottom: auto;
+            filter: blur(0px);
+            height: auto;
+            max-height: none;
+            background-color: transparent;
+            box-shadow: none;
+        }
+
+        @media (max-width: 1600px) {
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+
+        .suggestions-container {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border: 1px solid #ffbfe3;
+            border-radius: 0;
+            margin-top: -1px;
+            display: none;
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .suggestion-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 100;
+        }
+
+        .suggestion-item:hover {
+            background-color: #fff4fa;
+        }
+
+        .suggestion-item:last-child {
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-container" id="searchContainer">
+        <img src="https://i.picasion.com/gl/92/k2jS.gif" alt="Pheeble" class="title-image" style="margin-bottom: 20px; width: 190px; height: 43px;">
+        <div class="search-box">
+            <div class="search-input-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="Sök här :-)">
+            </div>
+            <div class="suggestions-container" id="suggestionsContainer"></div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="search-button" onclick="performSearch()">Sök</button>
+            <button class="random-button" onclick="showRandomImage()">???</button>
+            <button class="draw-button" onclick="openDrawingCanvas()">Rita</button>
+        </div>
+    </div>
+    
+    <div class="results-container" id="resultsContainer">
+        <div class="results-grid" id="resultsGrid"></div>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas class="drawing-canvas" id="drawingCanvas"></canvas>
+        <div class="canvas-controls">
+            <button class="canvas-button" onclick="clearCanvas()">Clear</button>
+            <button class="canvas-button" onclick="closeDrawingCanvas()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let globalData = [];
+        let uniqueCategories = new Set();
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSmVuFJxtbTti7EEc8BFT345LHLVOwTQcdBVw_6d7GsG-7nEaYskvvolFuPp8_5FWyyDwqOglA9vio0/pub?output=csv";
+
+            Papa.parse(csvUrl, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    globalData = results.data;
+                    // Extract unique categories from all cells
+                    globalData.forEach(row => {
+                        row.slice(1).forEach(cell => {
+                            const words = cell.toString().toLowerCase().split(/[,\s]+/);
+                            words.forEach(word => {
+                                if (word.length > 2) { // Only add words longer than 2 characters
+                                    uniqueCategories.add(word);
+                                }
+                            });
+                        });
+                    });
+                }
+            });
+        });
+
+        // Function to show suggestions
+        function showSuggestions(searchTerm) {
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            suggestionsContainer.innerHTML = '';
+            
+            if (!searchTerm) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            const matchingSuggestions = Array.from(uniqueCategories)
+                .filter(category => category.toLowerCase().includes(searchTerm.toLowerCase()))
+                .slice(0, 8); // Limit to 8 suggestions
+
+            if (matchingSuggestions.length === 0) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            matchingSuggestions.forEach(suggestion => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = suggestion;
+                div.onclick = () => {
+                    document.getElementById('searchInput').value = suggestion;
+                    suggestionsContainer.style.display = 'none';
+                    performSearch();
+                };
+                suggestionsContainer.appendChild(div);
+            });
+
+            suggestionsContainer.style.display = 'block';
+        }
+
+        // Add input event listener for suggestions
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            showSuggestions(e.target.value);
+        });
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            const searchInput = document.getElementById('searchInput');
+            if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+
+        // Add event listener for Enter key
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('suggestionsContainer').style.display = 'none';
+                performSearch();
+            }
+        });
+
+        function performSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const resultsGrid = document.getElementById('resultsGrid');
+            const searchContainer = document.getElementById('searchContainer');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            // Clear previous results
+            resultsGrid.innerHTML = '';
+
+            // Show results container and adjust search container
+            searchContainer.classList.add('results-shown');
+            resultsContainer.style.display = 'block';
+
+            // Search through the data
+            globalData.forEach((row, rowIndex) => {
+                // Only process up to index 86 (for images 02-088)
+                if (rowIndex > 86) return;
+
+                // Check if any cell in the row (except first column) contains the search term
+                const hasMatch = row.slice(1).some(cell => 
+                    cell.toString().toLowerCase().includes(searchTerm)
+                );
+
+                if (hasMatch) {
+                    // Create result item for the matching row's image
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+
+                    // Create image container
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'image-container';
+
+                    // Create image element
+                    const img = document.createElement('img');
+                    const rowNum = rowIndex + 1; // Start from 1
+                    let imageNumber;
+                    
+                    // Format image number based on original file naming
+                    if (rowNum <= 9) {
+                        imageNumber = `0${rowNum + 1}`; // Add 1 to start from 02.JPG
+                    } else {
+                        imageNumber = `0${rowNum + 1}`; // For 010.JPG to 088.JPG
+                    }
+
+                    img.src = `100bilder/${imageNumber}.JPG`;
+                    
+                    // Handle image load to adjust text width
+                    img.onload = function() {
+                        const textDiv = this.parentNode.nextSibling;
+                        if (textDiv && textDiv.classList.contains('result-text')) {
+                            textDiv.style.width = this.offsetWidth + 'px';
+                        }
+                    };
+                    
+                    // Handle missing images
+                                    img.onerror = function() {
+                        img.style.display = 'none';
+                        const errorText = document.createElement('div');
+                        errorText.textContent = `Image ${imageNumber}.JPG not found`;
+                        errorText.style.color = '#666';
+                        errorText.style.fontSize = '12px';
+                        errorText.style.padding = '20px';
+                        imageContainer.appendChild(errorText);
+                    };
+
+                    imageContainer.appendChild(img);
+
+                    // Create text element for matching content
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'result-text';
+                    
+                    // Add each column as a separate row
+                    row.slice(1).forEach((cellContent, cellIndex) => {
+                        const rowDiv = document.createElement('div');
+                        rowDiv.className = 'result-text-row';
+                        rowDiv.textContent = cellContent;
+                        textDiv.appendChild(rowDiv);
+                    });
+
+                    resultItem.appendChild(imageContainer);
+                    resultItem.appendChild(textDiv);
+                    resultsGrid.appendChild(resultItem);
+                }
+            });
+
+            // If no results found
+            if (resultsGrid.children.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.textContent = 'No results found';
+                noResults.style.textAlign = 'center';
+                noResults.style.gridColumn = '1 / -1';
+                resultsGrid.appendChild(noResults);
+            }
+        }
+
+        function showRandomImage() {
+            const resultsGrid = document.getElementById('resultsGrid');
+            const searchContainer = document.getElementById('searchContainer');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            // Clear previous results
+            resultsGrid.innerHTML = '';
+
+            // Show results container and adjust search container
+            searchContainer.classList.add('results-shown');
+            resultsContainer.style.display = 'block';
+
+            // Generate random index (images are from 02 to 88)
+            const randomIndex = Math.floor(Math.random() * 87); // 0 to 86
+
+            // Create result item for the random image
+            const resultItem = document.createElement('div');
+            resultItem.className = 'result-item';
+
+            // Create image container
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'image-container';
+
+            // Create image element
+            const img = document.createElement('img');
+            // Format image number (02 to 88)
+            const imageNumber = (randomIndex + 2) <= 9 ? `0${randomIndex + 2}` : `0${randomIndex + 2}`;
+            img.src = `100bilder/${imageNumber}.JPG`;
+
+            // Handle image load to adjust text width
+            img.onload = function() {
+                const textDiv = this.parentNode.nextSibling;
+                if (textDiv && textDiv.classList.contains('result-text')) {
+                    textDiv.style.width = this.offsetWidth + 'px';
+                }
+            };
+
+            // Handle missing images
+            img.onerror = function() {
+                img.style.display = 'none';
+                const errorText = document.createElement('div');
+                errorText.textContent = `Image ${imageNumber}.JPG not found`;
+                errorText.style.color = '#666';
+                errorText.style.fontSize = '12px';
+                errorText.style.padding = '20px';
+                imageContainer.appendChild(errorText);
+            };
+
+            imageContainer.appendChild(img);
+
+            // Create text element for the content
+            const textDiv = document.createElement('div');
+            textDiv.className = 'result-text';
+
+            // Add each column as a separate row
+            if (globalData[randomIndex]) {
+                globalData[randomIndex].slice(1).forEach((cellContent) => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'result-text-row';
+                    rowDiv.textContent = cellContent;
+                    textDiv.appendChild(rowDiv);
+                });
+            }
+
+            resultItem.appendChild(imageContainer);
+            resultItem.appendChild(textDiv);
+            resultsGrid.appendChild(resultItem);
+        }
+
+        function openDrawingCanvas() {
+            const canvasContainer = document.getElementById('canvasContainer');
+            const canvas = document.getElementById('drawingCanvas');
+            canvasContainer.style.display = 'block';
+            
+            // Set canvas size to window size
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Preload all images
+            const imageCache = [];
+            for (let i = 2; i <= 88; i++) {
+                const img = new Image();
+                const imageNumber = i <= 9 ? `0${i}` : `0${i}`;
+                img.src = `100bilder/${imageNumber}.JPG`;
+                imageCache.push(img);
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                // Get random image from cache
+                const randomImg = imageCache[Math.floor(Math.random() * imageCache.length)];
+                
+                // Calculate distance between last and current point
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Draw images along the path
+                if (distance > 100) { // Increased spacing for larger images
+                    const size = 200; // Size of the drawn images (increased from 100)
+                    ctx.drawImage(randomImg, e.clientX - size/2, e.clientY - size/2, size, size);
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                }
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            });
+
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', () => isDrawing = false);
+            canvas.addEventListener('mouseout', () => isDrawing = false);
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function closeDrawingCanvas() {
+            const canvasContainer = document.getElementById('canvasContainer');
+            canvasContainer.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
